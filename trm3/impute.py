@@ -20,75 +20,6 @@ def version():
     return "1.1"
 
 
-def _create_function(column_name,
-                     cf_groupby,
-                     cf_impute_values,
-                     cf_groupby_values,
-                     cf_new_gb_value_impute
-                     ):
-    """
-    :param column_name:
-    :type column_name: str
-    :param cf_groupby:
-    :type cf_groupby: list[str]
-    :param cf_impute_values:
-    :type cf_impute_values: list[object]
-    :param cf_groupby_values:
-    :type cf_groupby_values: list[object]
-    :param cf_new_gb_value_impute:
-    :type cf_new_gb_value_impute: object
-    :return:
-    :rtype: str
-    """
-
-    def x_and(condition, code_line) -> str:
-        if condition > 1:
-            return " and "
-        elif code_line == 1:
-            return "if "
-        else:
-            return "elif "
-
-    def x_val(x) -> str:
-        if type(x) == str:
-            return "'" + x + "'"
-        else:
-            return str(x)
-
-    def x_indent(n):
-        return " " * n * 4
-
-    line = 0
-    code = "def impute_calc(x):\n"
-    code += x_indent(1) + "if pandas.isnull(x['" + column_name + "']):\n"
-    if cf_groupby != ["z__groupby"]:
-        for i in range(0, len(cf_impute_values)):
-            line += 1
-            cond = 0
-            for gbcol in cf_groupby:
-                cond += 1
-                if cond == 1:
-                    code += x_indent(2)
-                code += x_and(cond, line)
-                code += "x['" + gbcol + "'] == "
-                code += x_val(cf_groupby_values[i][cond - 1])
-            code += ":\n"
-            code += x_indent(3) + "return " + x_val(cf_impute_values[i]) + "\n"
-        code += x_indent(2) + "else:\n"
-        code += x_indent(3) + "return " + x_val(cf_new_gb_value_impute) + "\n"
-    elif len(cf_impute_values) == 1:
-        code += x_indent(2) + "return " + x_val(cf_impute_values[0]) + "\n"
-    else:
-        raise Exception("Expecting 1 element in the _impute_values list.  Found " +
-                        str(len(cf_impute_values)) + " instead.")
-    code += x_indent(1) + "else:\n"
-    code += x_indent(2) + "return x['" + column_name + "']"
-    print(" ")
-    print(code)
-    print(" ")
-    return code
-
-
 class ImputeRules:
     def __init__(self,
                  imputed_columns=None,
@@ -209,6 +140,147 @@ class ImputeRules:
         return version()
 
     #-----------------------------------------------------------------------
+    # Method:  python_code()
+    #-----------------------------------------------------------------------
+    def python_code(self,
+                    outfile=None
+                    ):
+
+        code = ''
+
+        def al(x):
+            nonlocal code
+            code += x + "\n"
+
+        def expr_val(x) -> str:
+            if type(x) == str:
+                return "'" + x + "'"
+            else:
+                return str(x)
+
+        def comment(indent, x):
+            spaces = ' ' * 4 * indent
+            al(spaces + '#-----------------------------------------------------------------------')
+            if type(x) == str:
+                al(spaces + '# ' + x)
+            elif type(x) == list:
+                for line in x:
+                    al(spaces + '# ' + line)
+            al(spaces + '#-----------------------------------------------------------------------')
+
+        code = "def impute_missing_values(df):\n"
+
+        if len(self.__groupby_impute_values) > 0:
+            al('')
+            comment(1, ["Function to fill missing for a specific column and combination of",
+                        "groupby values."])
+            al('    def gb_fillna(gb_fill_df, impute_col, expr, impute_val):')
+            al('        _map = gb_fill_df.eval(expr)')
+            al('        gb_fill_df.loc[_map, impute_col] = gb_fill_df.loc[_map, impute_col].fillna(value=impute_val, inplace=False)')
+            al('')
+            comment(1, "Replace any missing values in the groupby variables.")
+
+            for col, val in self.__groupby_impute_values:
+                al("    df[%s].fillna(%s, inplace=True))" % (expr_val(col), expr_val(val)))
+
+            al("")
+            al("")
+
+        # -----------------------------------------------------------------------
+        # Apply missing values for the non-groupby variables
+        # -----------------------------------------------------------------------
+        for rule in self.__rules_list:
+
+            column_count = rule[0]
+            column = rule[1]
+
+            # print("[%03d] %s" % (column_count, column))
+
+            gbdf = rule[3].reset_index(inplace=False)
+            row_number = 0
+            expression_list = list()
+            new_gb_value_impute = None
+
+            al("")
+            comment(1, column + " Imputation")
+
+            # -----------------------------------------------------------------------
+            # Impute when there are groupby variables
+            # -----------------------------------------------------------------------
+            if len(self.__groupby_impute_values) > 0:
+                # -----------------------------------------------------------------------
+                # Begin:  for row_tuple in gbdf.itertuples():
+                # -----------------------------------------------------------------------
+                for row_tuple in gbdf.itertuples():
+                    row = row_tuple._asdict()
+                    row_number += 1
+                    if row_number == 1:
+                        if row["z__column_type"] in ["Numeric"]:
+                            new_gb_value_impute = row["z__df_median"]
+                        else:
+                            new_gb_value_impute = row["z__df_mode"]
+
+                    i = 0
+                    expression = ""
+                    for col in self.__groupby:
+                        i += 1
+                        prefix = "" if i == 1 else " and "
+                        expression += prefix + col + "==" + expr_val(row[col])
+                        expression_list.append(expression)
+                        al("    gb_fillna(impute_df if inplace else new_df,")
+                        al("              " + expr_val(column) + ",")
+                        al("              " + expr_val(expression) + ",")
+                        al("              " + expr_val(row["z__impute"]))
+                        al("             )")
+                        al("")
+                # -----------------------------------------------------------------------
+                # End:  for row_tuple in gbdf.itertuples():
+                # -----------------------------------------------------------------------
+
+                # -----------------------------------------------------------------------
+                # Impute missing when new value(s) for groupby variable(s) is found.
+                # -----------------------------------------------------------------------
+                i = 0
+                new_group_by_expression = ""
+                for expr in expression_list:
+                    i += 1
+                    prefix = "not " if i == 1 else " and not "
+                    new_group_by_expression += prefix + "(" + expr + ")"
+
+                al("    gb_fillna(impute_df if inplace else new_df,")
+                al("             " + expr_val(column) + ",")
+                al("             " + expr_val(new_group_by_expression) + ",")
+                al("             " + expr_val(new_gb_value_impute))
+                al("             )")
+                al("")
+                # -----------------------------------------------------------------------
+            # Impute when there are not any groupby variables
+            # -----------------------------------------------------------------------
+            else:
+                for row_tuple in gbdf.itertuples():
+                    row = row_tuple._asdict()
+                    row_number += 1
+                    if row == 1:
+                        al("df[" + expr_val(column) + "].fillna(value=" + expr_val(row["z__impute"]) + ", inplace=True")
+                        break
+                al("")
+        # -----------------------------------------------------------------------
+        # End:  for rule in self.__rules_list:
+        # -----------------------------------------------------------------------
+
+        if outfile is not None:
+            try:
+                with open(outfile, 'a') as f:
+                    f.write(code)
+            except:
+                raise
+
+        return code
+    # -----------------------------------------------------------------------
+    # End of Method:  code()
+    # -----------------------------------------------------------------------
+
+    #-----------------------------------------------------------------------
     # Method:  impute()
     #-----------------------------------------------------------------------
     def impute(self,
@@ -224,8 +296,6 @@ class ImputeRules:
         """
 
         new_df = None if inplace else impute_df.loc[:, :].copy()   # type: pandas.DataFrame
-        impute_values = list()
-        groupby_values = list()
         new_gb_value_impute = None
 
         def expr_val(x) -> str:
@@ -316,8 +386,9 @@ class ImputeRules:
                     row_number += 1
                     if row == 1:
                         impute_df[column].fillna(value=row["z__impute"], inplace=True)
+                        break
         #-----------------------------------------------------------------------
-        # End:  ffor rule in self.__rules_list:
+        # End:  for rule in self.__rules_list:
         #-----------------------------------------------------------------------
 
         if not inplace:
