@@ -83,7 +83,9 @@ def _create_function(column_name,
                         str(len(cf_impute_values)) + " instead.")
     code += x_indent(1) + "else:\n"
     code += x_indent(2) + "return x['" + column_name + "']"
-    # print(code)
+    print(" ")
+    print(code)
+    print(" ")
     return code
 
 
@@ -226,6 +228,16 @@ class ImputeRules:
         groupby_values = list()
         new_gb_value_impute = None
 
+        def expr_val(x) -> str:
+            if type(x) == str:
+                return "'" + x + "'"
+            else:
+                return str(x)
+
+        def gb_fillna(df, impute_col, expr, impute_val):
+            _map = df.eval(expr)
+            df.loc[_map, impute_col] = df.loc[_map, impute_col].fillna(value=impute_val, inplace=False)
+
         #-----------------------------------------------------------------------
         # Apply missing value imputations to groupby variables
         #-----------------------------------------------------------------------
@@ -246,48 +258,66 @@ class ImputeRules:
 
             gbdf = rule[3].reset_index(inplace=False)
             row_number = 0
+            expression_list = list()
 
             #-----------------------------------------------------------------------
-            # Begin for loop:  for row_tuple in gbdf.itertuples():
+            # Impute when there are groupby variables
             #-----------------------------------------------------------------------
-            for row_tuple in gbdf.itertuples():
-                row = row_tuple._asdict()
-                row_number += 1
+            if len(self.__groupby_impute_values) > 0:
+                #-----------------------------------------------------------------------
+                # Begin:  for row_tuple in gbdf.itertuples():
+                #-----------------------------------------------------------------------
+                for row_tuple in gbdf.itertuples():
+                    row = row_tuple._asdict()
+                    row_number += 1
+                    if row_number == 1:
+                        if row["z__column_type"] in ["Numeric"]:
+                            new_gb_value_impute = row["z__df_median"]
+                        else:
+                            new_gb_value_impute = row["z__df_mode"]
 
-                if row_number == 1:
-                    impute_values = [row["z__impute"]]
-                    v = list()
+                    i = 0
+                    expression = ""
                     for col in self.__groupby:
-                        v.append(row[col])
-                    groupby_values = [v]
-                    if row["z__column_type"] in ["Numeric", "Datetime"]:
-                        new_gb_value_impute = row["z__df_median"]
-                    else:
-                        new_gb_value_impute = row["z__df_mode"]
+                        i += 1
+                        prefix = "" if i == 1 else " and "
+                        expression += prefix + col + "==" + expr_val(row[col])
+                        expression_list.append(expression)
+                        gb_fillna(impute_df if inplace else new_df,
+                                  column,
+                                  expression,
+                                  row["z__impute"]
+                                  )
+                #-----------------------------------------------------------------------
+                # End:  for row_tuple in gbdf.itertuples():
+                #-----------------------------------------------------------------------
 
-                impute_values.append(row["z__impute"])
-                v = list()
-                for col in self.__groupby:
-                    v.append(row[col])
-                groupby_values.append(v)
+                #-----------------------------------------------------------------------
+                # Impute missing when new value(s) for groupby variable(s) is found.
+                #-----------------------------------------------------------------------
+                i = 0
+                new_group_by_expression = ""
+                for expr in expression_list:
+                    i += 1
+                    prefix = "not " if i == 1 else " and not "
+                    new_group_by_expression += prefix + "(" + expr + ")"
+
+                gb_fillna(impute_df if inplace else new_df,
+                          column,
+                          new_group_by_expression,
+                          new_gb_value_impute
+                          )
             #-----------------------------------------------------------------------
-            # End for loop:  for row_tuple in gbdf.itertuples():
+            # Impute when there are not any groupby variables
             #-----------------------------------------------------------------------
-
-            code = _create_function(row["z__column"],
-                                    self.__groupby,
-                                    impute_values,
-                                    groupby_values,
-                                    new_gb_value_impute
-                                    )
-            exec(code, globals())
-
-            if inplace:
-                impute_df[row["z__column"]] = impute_df.apply(impute_calc, axis=1)
             else:
-                new_df[row["z__column"]] = new_df.apply(impute_calc, axis=1)
+                for row_tuple in gbdf.itertuples():
+                    row = row_tuple._asdict()
+                    row_number += 1
+                    if row == 1:
+                        impute_df[column].fillna(value=row["z__impute"], inplace=True)
         #-----------------------------------------------------------------------
-        # End:  Apply missing values for the non-groupby variables
+        # End:  ffor rule in self.__rules_list:
         #-----------------------------------------------------------------------
 
         if not inplace:
@@ -812,11 +842,7 @@ class Imputer:
                     print(" ")
                 continue
 
-            gbdf["z__df_unique"] = df_unique
             tdf["z__isnull"] = tdf[col].isnull().astype('float64')
-            gbdf["z__df_nmiss"] = tdf["z__isnull"].sum()
-            gbdf["z__df_nobs"] = tdf[col].count()
-            gbdf["z__df_mode"] = tdf[col].mode().tolist()[0]
 
             gb = tdf.groupby(gbcolumns, as_index=True)
             if len(gbcolumns) > 1:
@@ -833,6 +859,11 @@ class Imputer:
             gbdf["z__unique"] = tdf.groupby(gbcolumns)[col].nunique(dropna=True)
 
             gbdf["z__column"] = col
+
+            gbdf["z__df_unique"] = df_unique
+            gbdf["z__df_nmiss"] = tdf["z__isnull"].sum()
+            gbdf["z__df_nobs"] = tdf[col].count()
+            gbdf["z__df_mode"] = tdf[col].mode().tolist()[0]
 
             if col_type == "Numeric":
                 gbdf["z__df_mean"] = tdf[col].mean()
@@ -902,8 +933,8 @@ class Imputer:
                         elif xmethod == 2:
                             return x["z__median"] if xtype == "impute" else "median"
                     else:
-                        if x["z_df_unique"] < xthreshhold:
-                            return x["z_df_mode"] if xtype == "impute" else "mode"
+                        if x["z__df_unique"] < xthreshhold:
+                            return x["z__df_mode"] if xtype == "impute" else "mode"
                         elif xmethod == 1:
                             return x["z__df_mean"] if xtype == "impute" else "mean"
                         elif xmethod == 2:
@@ -931,7 +962,7 @@ class Imputer:
                         elif x["z__nobs"] > 0 and x["z__unique"] > 0:
                             return x["z__mode"] if xtype == "impute" else "mode"
                         else:
-                            return x["z_df_mode"] if xtype == "impute" else "mode"
+                            return x["z__df_mode"] if xtype == "impute" else "mode"
                     else:
                         if x["z__unique"] == 1 and x["z__mode"] != "[nan]":
                             return "[nan]" if xtype == "impute" else "new category"
@@ -940,7 +971,7 @@ class Imputer:
                         elif x["z__nobs"] > 0 and x["z__unique"] > 0:
                             return x["z__mode"] if xtype == "impute" else "mode"
                         else:
-                            return x["z_df_mode"] if xtype == "impute" else "mode"
+                            return x["z__df_mode"] if xtype == "impute" else "mode"
 
                 gbdf["z__impute"] = gbdf.apply(lambda z: calc3(z, col_type, "impute"), axis=1)
                 gbdf["z__impute_type"] = gbdf.apply(lambda z: calc3(z, col_type, "impute_type"), axis=1)
@@ -958,7 +989,7 @@ class Imputer:
                     elif x["z__nobs"] > 0 and x["z__unique"] > 0:
                         return x["z__mode"] if xtype == "impute" else "mode"
                     else:
-                        return x["z_df_mode"] if xtype == "impute" else "mode"
+                        return x["z__df_mode"] if xtype == "impute" else "mode"
 
                 gbdf["z__impute"] = gbdf.apply(lambda z: calcn(z, "impute"), axis=1).astype('str')
                 gbdf["z__impute_type"] = gbdf.apply(lambda z: calcn(z, "impute__type"), axis=1).astype('str')
@@ -1049,13 +1080,12 @@ class Imputer:
                         elif xmethod == 5:
                             return x["z__median"] if xtype == "impute" else "median"
                     else:
-                        if x["z_df_unique"] < xthreshhold:
-                            return x["z_df_mode"] if xtype == "impute" else "mode"
+                        if x["z__df_unique"] < xthreshhold:
+                            return x["z__df_mode"] if xtype == "impute" else "mode"
                         elif xmethod == 4:
                             return x["z__df_mean"] if xtype == "impute" else "mean"
                         elif xmethod == 5:
                             return x["z__df_median"] if xtype == "impute" else "median"
-
 
                 bin_gbdf["z__impute"] = bin_gbdf.apply(lambda z: calcn45(z, self.__method, self.__mode_fallback_distinct_values, "impute"), axis=1)
                 bin_gbdf["z__impute_type"] = bin_gbdf.apply(lambda z: calcn45(z, self.__method, self.__mode_fallback_distinct_values, "impute_type"), axis=1)
@@ -1114,8 +1144,8 @@ class Imputer:
         if len(rules_df) > 0:
             return ImputeRules(imputed_columns=[x for x in self.__columns if x not in gbcolumns + [label_column]],
                                label=label_column,
-                               groupby=gbcolumns if gbcolumns != ["z__groupby"] else None,
-                               groupby_impute_values=gb_impute_values,
+                               groupby=gbcolumns if gbcolumns != ["z__groupby"] else list(),
+                               groupby_impute_values=gb_impute_values if gbcolumns != ["z__groupby"] else list(),
                                create_dt=datetime.datetime.now(),
                                notes=None,
                                rules_list=rules_df
