@@ -7,6 +7,7 @@
     <list default="true" id="2e6c5f1d-004c-4632-b653-3b2eb41582c7" name="Default" comment="">
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/trm3/impute.py" afterPath="$PROJECT_DIR$/trm3/impute.py" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/trm3pylib testing 001.ipynb" afterPath="$PROJECT_DIR$/trm3pylib testing 001.ipynb" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/trm3pylib testing 002.ipynb" afterPath="$PROJECT_DIR$/trm3pylib testing 002.ipynb" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="TRACKING_ENABLED" value="true" />
@@ -36,8 +37,8 @@
           <file leaf-file-name="impute.py" pinned="false" current-in-tab="true">
             <entry file="file://$PROJECT_DIR$/trm3/impute.py">
               <provider selected="true" editor-type-id="text-editor">
-                <state relative-caret-position="1077">
-                  <caret line="359" column="30" lean-forward="false" selection-start-line="359" selection-start-column="30" selection-end-line="359" selection-end-column="30" />
+                <state relative-caret-position="447">
+                  <caret line="807" column="30" lean-forward="true" selection-start-line="807" selection-start-column="30" selection-end-line="807" selection-end-column="30" />
                   <folding>
                     <element signature="e#0#11#0" expanded="true" />
                   </folding>
@@ -74,8 +75,8 @@
           <file leaf-file-name="impute.py" pinned="false" current-in-tab="true">
             <entry file="file://$PROJECT_DIR$/trm3/impute.py">
               <provider selected="true" editor-type-id="text-editor">
-                <state relative-caret-position="368">
-                  <caret line="753" column="0" lean-forward="true" selection-start-line="753" selection-start-column="0" selection-end-line="753" selection-end-column="0" />
+                <state relative-caret-position="599">
+                  <caret line="1050" column="25" lean-forward="true" selection-start-line="1050" selection-start-column="25" selection-end-line="1050" selection-end-column="25" />
                   <folding>
                     <element signature="e#0#11#0" expanded="true" />
                   </folding>
@@ -116,6 +117,7 @@
       <find>query(</find>
       <find>xindent</find>
       <find>.fillna</find>
+      <find>nan</find>
     </findStrings>
     <replaceStrings>
       <replace>_label_type</replace>
@@ -413,8 +415,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/trm3/impute.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="368">
-          <caret line="753" column="0" lean-forward="true" selection-start-line="753" selection-start-column="0" selection-end-line="753" selection-end-column="0" />
+        <state relative-caret-position="447">
+          <caret line="807" column="30" lean-forward="true" selection-start-line="807" selection-start-column="30" selection-end-line="807" selection-end-column="30" />
           <folding>
             <element signature="e#0#11#0" expanded="true" />
           </folding>
