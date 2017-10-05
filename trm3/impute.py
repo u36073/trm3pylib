@@ -301,7 +301,8 @@ class Imputer:
                  nominal_new_category_min_obs=.01,
                  missing_indicators=False,
                  missing_indicators_min_obs=.01,
-                 model_x_columns=None
+                 model_x_columns=None,
+                 verbose=True
                  ):
         """
         :param train_df: Pandas Dataframe to generate missing imputation rules from.
@@ -337,8 +338,10 @@ class Imputer:
         :type missing_indicators: bool
         :param missing_indicators_min_obs:
         :type missing_indicators_min_obs: float
-        :parm model_x_columns:
+        :param model_x_columns:
         :type model_x_columns: list[str]
+        :param verbose:
+        :type verbose: bool
         """
 
         self.model_x_columns = model_x_columns
@@ -354,6 +357,18 @@ class Imputer:
         self.columns = columns
         self.test_df = test_df
         self.train_df = train_df
+        self.verbose = verbose
+
+    # ------------------------------------------------------------------
+    # Property:  verbose
+    # ------------------------------------------------------------------
+    @property
+    def verbose(self):
+        return self.__verbose
+
+    @verbose.setter
+    def verbose(self, x):
+        self.__verbose = x
 
     # ------------------------------------------------------------------
     # Property:  model_x_columns
@@ -666,6 +681,19 @@ class Imputer:
     # -----------------------------------------------------------------------
     def fit(self):
 
+        _start_proc = time.time()
+        _start_var = time.time()
+
+        def proc_duration():
+            nonlocal _start_proc
+            dur = time.time() - _start_proc
+            return dur
+
+        def var_duration():
+            nonlocal _start_var
+            dur = time.time() - _start_var
+            return dur
+
         errors = self.validate_properties()
 
         if len(errors) > 0:
@@ -729,6 +757,8 @@ class Imputer:
         #-----------------------------------------------------------------------
         for col in [x for x in self.__columns if x not in gbcolumns + [label_column]]:
 
+            _start_var = time.time()
+
             col_dtype = self.__train_df[col].dtype
             if col_dtype in [numpy.dtype('float64'), numpy.dtype('float32'), numpy.dtype('int64'), numpy.dtype('int32')]:
                 col_type = "Numeric"
@@ -741,16 +771,11 @@ class Imputer:
 
             column_count += 1
 
-            print("DEBUG:  %s - %s" % (column_count, col))
-
-            __start = time.time()
-
-            def timecheck(x):
-                nonlocal __start
-                duration = time.time() - __start
-                print("[%s] -> %s seconds" % (x, duration))
-
             if col_type in ["Datetime", "Interval"]:
+                if self.__verbose:
+                    print("[%04d] %s - Excluded due to unsupported data type of %s (%s)."
+                          % (column_count, col, col_type, col_dtype))
+                    print(" ")
                 continue
 
             if gbcolumns == ['__groupby__']:
@@ -1011,14 +1036,39 @@ class Imputer:
                 # 2. mechanism to save and apply a specific order of columns to a dataframe so that
                 #    wrapper methods can be developed for routines that are sensitive to the order
                 #    of columns such as everthing in SciKit and XGBoost.
-            timecheck(col)
+
             #-----------------------------------------------------------------------
             # [End of Loop] - for col in [x for x in self.__columns if x not in gbcolumns]:
             #-----------------------------------------------------------------------
 
+            if self.__verbose:
+                print("[%04d] %s - Processed in %s seconds." % (column_count, col, var_duration()))
+                if col_type == "Numeric":
+                    print("       dtype=%s(%s)  NaN=%s  Unique=%s  Mean=%s  Median=%s"
+                          % (col_type, col_dtype,
+                             gbdf["z__df_nmiss"].min(),
+                             gbdf["z__df_unique"].min(),
+                             gbdf["z__df_mean"].min(),
+                             gbdf["z__df_median"].min()
+                             )
+                          )
+                else:
+                    print("       dtype=%s(%s)  NaN=%s  Unique=%s  Mode=%s"
+                          % (col_type, col_dtype,
+                             gbdf["z__df_nmiss"].min(),
+                             gbdf["z__df_unique"].min(),
+                             gbdf["z__df_mode"].min()
+                             )
+                          )
+                print(" ")
         #-----------------------------------------------------------------------
         # Return Rules Class Object
         #-----------------------------------------------------------------------
+        if self.__verbose:
+            print(" ")
+            print("Imputer.fit() finished in %s seconds." % proc_duration())
+            print("%s variables processed." % len([x for x in self.__columns if x not in gbcolumns + [label_column]]))
+
         if len(rules_df) > 0:
             return ImputeRules(imputed_columns=[x for x in self.__columns if x not in gbcolumns],
                                label=label_column,

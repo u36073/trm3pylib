@@ -4,7 +4,10 @@
     <option name="SCOPE_TYPE" value="3" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2e6c5f1d-004c-4632-b653-3b2eb41582c7" name="Default" comment="" />
+    <list default="true" id="2e6c5f1d-004c-4632-b653-3b2eb41582c7" name="Default" comment="">
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/trm3/impute.py" afterPath="$PROJECT_DIR$/trm3/impute.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/trm3pylib testing 001.ipynb" afterPath="$PROJECT_DIR$/trm3pylib testing 001.ipynb" />
+    </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="TRACKING_ENABLED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -30,18 +33,13 @@
     <splitter split-orientation="horizontal" split-proportion="0.46975717">
       <split-first>
         <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
-          <file leaf-file-name="impute.py" pinned="false" current-in-tab="false">
+          <file leaf-file-name="impute.py" pinned="false" current-in-tab="true">
             <entry file="file://$PROJECT_DIR$/trm3/impute.py">
               <provider selected="true" editor-type-id="text-editor">
-                <state relative-caret-position="-1071">
-                  <caret line="72" column="48" lean-forward="true" selection-start-line="72" selection-start-column="48" selection-end-line="72" selection-end-column="48" />
+                <state relative-caret-position="1077">
+                  <caret line="359" column="30" lean-forward="false" selection-start-line="359" selection-start-column="30" selection-end-line="359" selection-end-column="30" />
                   <folding>
                     <element signature="e#0#11#0" expanded="true" />
-                    <marker date="1507184852422" expanded="true" signature="33740:34368" ph="..." />
-                    <marker date="1507184852422" expanded="true" signature="33829:33950" ph="..." />
-                    <marker date="1507184852422" expanded="true" signature="34916:35029" ph="..." />
-                    <marker date="1507184852422" expanded="true" signature="42012:42796" ph="'''...'''" />
-                    <marker date="1507184852422" expanded="true" signature="44263:45064" ph="..." />
                   </folding>
                 </state>
               </provider>
@@ -57,11 +55,11 @@
               </provider>
             </entry>
           </file>
-          <file leaf-file-name="utility.py" pinned="false" current-in-tab="true">
+          <file leaf-file-name="utility.py" pinned="false" current-in-tab="false">
             <entry file="file://$PROJECT_DIR$/trm3/utility.py">
               <provider selected="true" editor-type-id="text-editor">
-                <state relative-caret-position="357">
-                  <caret line="102" column="55" lean-forward="true" selection-start-line="102" selection-start-column="55" selection-end-line="102" selection-end-column="55" />
+                <state relative-caret-position="567">
+                  <caret line="30" column="19" lean-forward="true" selection-start-line="30" selection-start-column="19" selection-end-line="30" selection-end-column="19" />
                   <folding>
                     <element signature="e#0#13#0" expanded="true" />
                   </folding>
@@ -76,8 +74,8 @@
           <file leaf-file-name="impute.py" pinned="false" current-in-tab="true">
             <entry file="file://$PROJECT_DIR$/trm3/impute.py">
               <provider selected="true" editor-type-id="text-editor">
-                <state relative-caret-position="503">
-                  <caret line="940" column="19" lean-forward="false" selection-start-line="940" selection-start-column="19" selection-end-line="940" selection-end-column="19" />
+                <state relative-caret-position="368">
+                  <caret line="753" column="0" lean-forward="true" selection-start-line="753" selection-start-column="0" selection-end-line="753" selection-end-column="0" />
                   <folding>
                     <element signature="e#0#11#0" expanded="true" />
                   </folding>
@@ -405,8 +403,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/trm3/utility.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="357">
-          <caret line="102" column="55" lean-forward="true" selection-start-line="102" selection-start-column="55" selection-end-line="102" selection-end-column="55" />
+        <state relative-caret-position="567">
+          <caret line="30" column="19" lean-forward="true" selection-start-line="30" selection-start-column="19" selection-end-line="30" selection-end-column="19" />
           <folding>
             <element signature="e#0#13#0" expanded="true" />
           </folding>
@@ -415,8 +413,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/trm3/impute.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="503">
-          <caret line="940" column="19" lean-forward="false" selection-start-line="940" selection-start-column="19" selection-end-line="940" selection-end-column="19" />
+        <state relative-caret-position="368">
+          <caret line="753" column="0" lean-forward="true" selection-start-line="753" selection-start-column="0" selection-end-line="753" selection-end-column="0" />
           <folding>
             <element signature="e#0#11#0" expanded="true" />
           </folding>
