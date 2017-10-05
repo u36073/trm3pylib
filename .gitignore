@@ -99,3 +99,7 @@ ENV/
 
 # mypy
 .mypy_cache/
+data-csv/properties_2016.csv
+data-csv/sample_submission.csv
+data-csv/train_2016.csv
+data-csv/zillow_train.csv
