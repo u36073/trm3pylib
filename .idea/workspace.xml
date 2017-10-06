@@ -30,14 +30,14 @@
     <select />
   </component>
   <component name="FileEditorManager">
-    <splitter split-orientation="horizontal" split-proportion="0.5960265">
+    <splitter split-orientation="horizontal" split-proportion="0.601766">
       <split-first>
         <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
           <file leaf-file-name="impute.py" pinned="false" current-in-tab="true">
             <entry file="file://$PROJECT_DIR$/trm3/impute.py">
               <provider selected="true" editor-type-id="text-editor">
-                <state relative-caret-position="533">
-                  <caret line="121" column="23" lean-forward="true" selection-start-line="121" selection-start-column="23" selection-end-line="121" selection-end-column="23" />
+                <state relative-caret-position="515">
+                  <caret line="268" column="51" lean-forward="true" selection-start-line="268" selection-start-column="51" selection-end-line="268" selection-end-column="51" />
                   <folding>
                     <element signature="e#0#11#0" expanded="true" />
                   </folding>
@@ -74,8 +74,8 @@
           <file leaf-file-name="impute.py" pinned="false" current-in-tab="true">
             <entry file="file://$PROJECT_DIR$/trm3/impute.py">
               <provider selected="true" editor-type-id="text-editor">
-                <state relative-caret-position="-1417">
-                  <caret line="1009" column="71" lean-forward="false" selection-start-line="1009" selection-start-column="71" selection-end-line="1009" selection-end-column="71" />
+                <state relative-caret-position="-2499">
+                  <caret line="19" column="16" lean-forward="true" selection-start-line="19" selection-start-column="16" selection-end-line="19" selection-end-column="16" />
                   <folding>
                     <element signature="e#0#11#0" expanded="true" />
                   </folding>
@@ -414,8 +414,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/trm3/impute.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="533">
-          <caret line="121" column="23" lean-forward="true" selection-start-line="121" selection-start-column="23" selection-end-line="121" selection-end-column="23" />
+        <state relative-caret-position="515">
+          <caret line="268" column="51" lean-forward="true" selection-start-line="268" selection-start-column="51" selection-end-line="268" selection-end-column="51" />
           <folding>
             <element signature="e#0#11#0" expanded="true" />
           </folding>

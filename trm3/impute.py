@@ -143,7 +143,9 @@ class ImputeRules:
     # Method:  python_code()
     #-----------------------------------------------------------------------
     def python_code(self,
-                    outfile=None
+                    outfile=None,
+                    include_columns=None,
+                    exclude_columns=None
                     ):
 
         code = ''
@@ -175,15 +177,14 @@ class ImputeRules:
             comment(1, ["Function to fill missing for a specific column and combination of",
                         "groupby values."])
             al('    def gb_fillna(gb_fill_df, impute_col, expr, impute_val):')
-            al('        _map = gb_fill_df.eval(expr)')
-            al('        gb_fill_df.loc[_map, impute_col] = gb_fill_df.loc[_map, impute_col].fillna(value=impute_val, inplace=False)')
+            al('        filter = gb_fill_df.eval(expr)')
+            al('        gb_fill_df.loc[filter, impute_col] = gb_fill_df.loc[filter, impute_col].fillna(value=impute_val, inplace=False)')
             al('')
             comment(1, "Replace any missing values in the groupby variables.")
 
             for col, val in self.__groupby_impute_values:
                 al("    df[%s].fillna(%s, inplace=True))" % (expr_val(col), expr_val(val)))
 
-            al("")
             al("")
 
         # -----------------------------------------------------------------------
@@ -193,6 +194,14 @@ class ImputeRules:
 
             column_count = rule[0]
             column = rule[1]
+
+            if include_columns is not None:
+                if column not in include_columns:
+                    continue
+
+            if exclude_columns is not None:
+                if column in exclude_columns:
+                    continue
 
             # print("[%03d] %s" % (column_count, column))
 
@@ -286,14 +295,20 @@ class ImputeRules:
     def impute(self,
                impute_df=None,
                inplace=False,
-               verbose=True
+               verbose=True,
+               missing_columns_action="ignore"  # skip, warn, raise
                ):
 
         """
         :type impute_df: pandas.DataFrame
         :type inplace: bool
         :type verbose: bool
+        :type missing_columns_action: str
+        :param missing_columns_action: Valid Values --> 'skip' 'warn' 'raise'
         """
+
+        df_columns = impute_df.columns.tolist()
+        df_columns.sort()
 
         new_df = None if inplace else impute_df.loc[:, :].copy()   # type: pandas.DataFrame
         new_gb_value_impute = None
@@ -304,9 +319,19 @@ class ImputeRules:
             else:
                 return str(x)
 
-        def gb_fillna(df, impute_col, expr, impute_val):
-            _map = df.eval(expr)
-            df.loc[_map, impute_col] = df.loc[_map, impute_col].fillna(value=impute_val, inplace=False)
+        def gb_fillna(df, impute_col, expression, impute_val):
+            nonlocal df_columns
+            if impute_col in df_columns:
+                xfilter = df.eval(expression)
+                df.loc[xfilter, impute_col] = df.loc[xfilter, impute_col].fillna(value=impute_val, inplace=False)
+            else:
+                if missing_columns_action == "warn":
+                    print("WARNING:  Column %s was not found." % impute_col)
+                    print(" ")
+                elif missing_columns_action == "raise":
+                    raise Exception("Column %s was not found." % impute_col)
+                else:
+                    pass
 
         #-----------------------------------------------------------------------
         # Apply missing value imputations to groupby variables
@@ -866,7 +891,9 @@ class Imputer:
         #-----------------------------------------------------------------------
         # Imputation Methods
         #-----------------------------------------------------------------------
-        for col in [x for x in self.__columns if x not in gbcolumns + [label_column]]:
+        columns = [x for x in self.__columns if x not in gbcolumns + [label_column]]
+        columns.sort()
+        for col in columns:
 
             _start_var = time.time()
 
