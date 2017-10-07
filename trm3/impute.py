@@ -142,11 +142,23 @@ class ImputeRules:
     #-----------------------------------------------------------------------
     # Method:  python_code()
     #-----------------------------------------------------------------------
-    def python_code(self,
-                    outfile=None,
-                    include_columns=None,
-                    exclude_columns=None
-                    ):
+    def code(self,
+             outfile=None,
+             include_columns=None,
+             exclude_columns=None
+             ):
+
+        """
+        :param outfile: (Optional) File to save the code text to.  If it already exists, the code
+                                   will be appended to the bottom of the file.
+        :type outfile: str
+        :param include_columns: (Optional) List of column names to generate code for.
+        :type include_columns: list[str]
+        :param exclude_columns: (Optional) List of column names to exlude from the generated code.
+        :type exclude_columns: list[str]
+
+        :rtype: str
+        """
 
         code = ''
 
@@ -296,6 +308,8 @@ class ImputeRules:
                impute_df=None,
                inplace=False,
                verbose=True,
+               include_columns=None,
+               exclude_columns=None,
                missing_columns_action="ignore"  # skip, warn, raise
                ):
 
@@ -347,6 +361,14 @@ class ImputeRules:
 
             column_count = rule[0]
             column = rule[1]
+
+            if include_columns is not None:
+                if column not in include_columns:
+                    continue
+
+            if exclude_columns is not None:
+                if column in exclude_columns:
+                    continue
 
             if verbose:
                 print("[%03d] %s" % (column_count, column))
@@ -422,6 +444,14 @@ class ImputeRules:
     # End of Method:  impute()
     #-----------------------------------------------------------------------
 
+'''
+                       1  mean > mode \n
+                       2  median > mode \n
+                       3  mode \n
+                       4  mean response > mean \n
+                       5  mean response > median \n
+                       6  Model: Gradient Boosting Model with XGBoost \n
+'''
 
 class Imputer:
     def __init__(self,
@@ -454,13 +484,12 @@ class Imputer:
         :param label:
         :type label: str
         :param method: Imputation method to use for each variable specified in [columns]. Options: \n
-                       0 - No Imputation
-                       1 - mean > mode \n
-                       2 - median > mode \n
-                       3 - mode \n
-                       4 - mean response > mean \n
-                       5 - mean response > median \n
-                       6 - Model: Gradient Boosting Model with XGBoost \n
+                       1  mean > mode \n
+                       2  median > mode \n
+                       3  mode \n
+                       4  mean response > mean \n
+                       5  mean response > median \n
+                       6  Model: Gradient Boosting Model with XGBoost \n
         :type method: int
         :param mode_fallback_distinct_values:
         :type mode_fallback_distinct_values: int
