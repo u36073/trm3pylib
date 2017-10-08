@@ -3,8 +3,13 @@ import numpy
 import pickle
 import glob
 import os
+import sys
+import collections
 import datetime
+from enum import Enum
 from IPython.core.display import display, HTML
+
+import trm3
 
 
 def pickle_save(obj, file):
@@ -31,6 +36,60 @@ def df_from_pickle(input_dir, file_prefix):
     for f in files:
         dflist.append(pandas.read_pickle(f))
     return pandas.concat(dflist, axis=0)
+
+
+def get_size(obj, unit='MB', suppress_output=False):
+    """
+    :param obj:
+    :type obj: object
+    :param unit:
+    :type unit: str
+    :return: object size and unit in a tuple (size, unit)
+    :rtype: tuple(float, str)
+
+    Recursively finds the size of an object.
+    """
+
+    valid_units = list()
+    for key, value in trm3.MemoryUnits.items():
+        valid_units.append(key.upper())
+
+    if str(unit).upper() not in valid_units:
+        print("Invalid value of %s for unit= parameter." % unit)
+        print("Valid values are %s" % valid_units)
+        print("")
+        print("Using the default value of MB for unit.")
+        unit = 'MB'
+
+    def __get_size(obj, seen=None):
+        size = sys.getsizeof(obj)
+        if seen is None:
+            seen = set()
+        obj_id = id(obj)
+        if obj_id in seen:
+            return 0
+        # Important mark as seen *before* entering recursion to gracefully handle
+        # self-referential objects
+
+        seen.add(obj_id)
+        if isinstance(obj, dict):
+            size += sum([__get_size(v, seen) for v in obj.values()])
+            size += sum([__get_size(k, seen) for k in obj.keys()])
+        elif hasattr(obj, '__dict__'):
+            size += __get_size(obj.__dict__, seen)
+        elif hasattr(obj, '__iter__') and not isinstance(obj, (str, bytes, bytearray)):
+            size += sum([__get_size(i, seen) for i in obj])
+        return size
+
+    total_size = __get_size(obj)
+    total_size = total_size / trm3.MemoryUnits[unit.upper()].bytes
+    unit_name = trm3.MemoryUnits[unit.upper()].name
+    unit_abbr = trm3.MemoryUnits[unit.upper()].abbreviation
+
+    if not suppress_output:
+        print("{0:,} {1}s ({2})".format(total_size, unit_name, unit_abbr))
+
+    return total_size
 
 
 def df_contents(input_df: pandas.DataFrame,
