@@ -17,3 +17,4 @@ MemoryUnits = {'B': MemoryUnit(1, 'Byte', 'B'),
                'ZB': MemoryUnit(1000000000000000000000, 'Zettabyte', 'ZB'),
                'ZiB': MemoryUnit(1180591620717411303424, 'Zebibyte', 'ZiB')
                }
+

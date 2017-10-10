@@ -145,7 +145,8 @@ class ImputeRules:
     def code(self,
              outfile=None,
              include_columns=None,
-             exclude_columns=None
+             exclude_columns=None,
+             indicator_suffix="_mi"
              ):
 
         """
@@ -156,7 +157,6 @@ class ImputeRules:
         :type include_columns: list[str]
         :param exclude_columns: (Optional) List of column names to exlude from the generated code.
         :type exclude_columns: list[str]
-
         :rtype: str
         """
 
@@ -182,6 +182,8 @@ class ImputeRules:
                     al(spaces + '# ' + line)
             al(spaces + '#-----------------------------------------------------------------------')
 
+        code = "import pandas\n"
+        code = "\n"
         code = "def impute_missing_values(df):\n"
 
         if len(self.__groupby_impute_values) > 0:
@@ -241,6 +243,10 @@ class ImputeRules:
                         else:
                             new_gb_value_impute = row["z__df_mode"]
 
+                        if row["z__indicator"]:
+                            al("    df['%s%s'] = df['%s'].isnull()" % (column, indicator_suffix, column))
+                            al("")
+
                     i = 0
                     expression = ""
                     for col in self.__groupby:
@@ -248,7 +254,7 @@ class ImputeRules:
                         prefix = "" if i == 1 else " and "
                         expression += prefix + col + "==" + expr_val(row[col])
                         expression_list.append(expression)
-                        al("    gb_fillna(impute_df if inplace else new_df,")
+                        al("    gb_fillna(df,")
                         al("              " + expr_val(column) + ",")
                         al("              " + expr_val(expression) + ",")
                         al("              " + expr_val(row["z__impute"]))
@@ -268,7 +274,7 @@ class ImputeRules:
                     prefix = "not " if i == 1 else " and not "
                     new_group_by_expression += prefix + "(" + expr + ")"
 
-                al("    gb_fillna(impute_df if inplace else new_df,")
+                al("    gb_fillna(df,")
                 al("             " + expr_val(column) + ",")
                 al("             " + expr_val(new_group_by_expression) + ",")
                 al("             " + expr_val(new_gb_value_impute))
@@ -282,7 +288,9 @@ class ImputeRules:
                     row = row_tuple._asdict()
                     row_number += 1
                     if row == 1:
-                        al("df[" + expr_val(column) + "].fillna(value=" + expr_val(row["z__impute"]) + ", inplace=True")
+                        if row["z__indicator"]:
+                            al("    df['%s%s'] = df['%s'].isnull()" % (column, indicator_suffix, column))
+                        al("    df[" + expr_val(column) + "].fillna(value=" + expr_val(row["z__impute"]) + ", inplace=True")
                         break
                 al("")
         # -----------------------------------------------------------------------
@@ -310,7 +318,8 @@ class ImputeRules:
                verbose=True,
                include_columns=None,
                exclude_columns=None,
-               missing_columns_action="ignore"  # skip, warn, raise
+               missing_columns_action="ignore",  # skip, warn, raise
+               indicator_suffix="_mi"
                ):
 
         """
@@ -393,6 +402,15 @@ class ImputeRules:
                         else:
                             new_gb_value_impute = row["z__df_mode"]
 
+                        # -----------------------------------------------------------------------
+                        # Create missing indicator variables
+                        # -----------------------------------------------------------------------
+                        if row["z__indicator"]:
+                            if inplace:
+                                impute_df[column + indicator_suffix] = impute_df[column].isnull()
+                            else:
+                                new_df[column + indicator_suffix] = new_df[column].isnull()
+
                     i = 0
                     expression = ""
                     for col in self.__groupby:
@@ -433,7 +451,17 @@ class ImputeRules:
                     row_number += 1
                     if row == 1:
                         impute_df[column].fillna(value=row["z__impute"], inplace=True)
+
+                        # -----------------------------------------------------------------------
+                        # Create missing indicator variables
+                        # -----------------------------------------------------------------------
+                        if row["z__indicator"]:
+                            if inplace:
+                                impute_df[column + indicator_suffix] = impute_df[column].isnull()
+                            else:
+                                new_df[column + indicator_suffix] = new_df[column].isnull()
                         break
+
         #-----------------------------------------------------------------------
         # End:  for rule in self.__rules_list:
         #-----------------------------------------------------------------------
@@ -444,14 +472,6 @@ class ImputeRules:
     # End of Method:  impute()
     #-----------------------------------------------------------------------
 
-'''
-                       1  mean > mode \n
-                       2  median > mode \n
-                       3  mode \n
-                       4  mean response > mean \n
-                       5  mean response > median \n
-                       6  Model: Gradient Boosting Model with XGBoost \n
-'''
 
 class Imputer:
     def __init__(self,
@@ -487,9 +507,8 @@ class Imputer:
                        1  mean > mode \n
                        2  median > mode \n
                        3  mode \n
-                       4  mean response > mean \n
-                       5  mean response > median \n
-                       6  Model: Gradient Boosting Model with XGBoost \n
+                       4  mean response > mean/mode > \n
+                       5  mean response > median/mode \n
         :type method: int
         :param mode_fallback_distinct_values:
         :type mode_fallback_distinct_values: int
@@ -1002,19 +1021,6 @@ class Imputer:
 
                 gbdf["z__df_median"] = tdf[col].median()
                 gbdf["z__median"] = tdf.groupby(gbcolumns)[col].median()
-                # if gbdf["z__unique"].min() <= self.__mode_fallback_distinct_values:
-                #     q_cols = gbcolumns[0]
-                #     if len(gbcolumns) > 1:
-                #         for i in range(1, len(gbcolumns)):
-                #             q_cols += ", " + gbcolumns[i]
-                #     q = 'select ' + q_cols + ", " + col
-                #     q += ", sum(case when " + col + " is not null then 1 else 0 end) as nobs\n"
-                #     q += "from tdf\n"
-                #     q += "group by " + q_cols + ", " + col + "\n"
-                #     q += "order by " + q_cols + ", nobs desc"
-                #     gbdf["z__mode"] = pandasql.sqldf(q).groupby(gbcolumns)[col].first()
-                # else:
-                #     gbdf["z__mode"] = numpy.NaN
             else:
                 gbdf["z__df_mean"] = None
                 gbdf["z__mean"] = None
@@ -1023,17 +1029,6 @@ class Imputer:
                 gbdf["z__mode"] = tdf.groupby(gbcolumns)[col]. \
                     apply(lambda x: pandas.Series.mode(x).tolist()). \
                     apply(lambda z: numpy.NaN if len(z) == 0 else z[0])
-
-                # q_cols = gbcolumns[0]
-                # if len(gbcolumns) > 1:
-                #     for i in range(1, len(gbcolumns)):
-                #         q_cols += ", " + gbcolumns[i]
-                # q = 'select ' + q_cols + ", " + col
-                # q += ", sum(case when " + col + " is not null then 1 else 0 end) as nobs\n"
-                # q += "from tdf\n"
-                # q += "group by " + q_cols + ", " + col + "\n"
-                # q += "order by " + q_cols + ", nobs desc"
-                # gbdf["z__mode"] = pandasql.sqldf(q).groupby(gbcolumns)[col].first()
 
             #-----------------------------------------------------------------------
             # Missing Indicators
@@ -1053,27 +1048,40 @@ class Imputer:
                     elif x["z__unique"] == 1 and x["z__mode"] != 1:
                         return 1 if xtype == "impute" else "binary one"
                     elif x["z__nobs"] > 0 and x["z__unique"] > 0:
-                        if x["z__unique"] < xthreshhold:
+                        if x["z__unique"] <= xthreshhold:
                             return x["z__mode"] if xtype == "impute" else "mode"
                         elif xmethod == 1:
                             return x["z__mean"] if xtype == "impute" else "mean"
                         elif xmethod == 2:
                             return x["z__median"] if xtype == "impute" else "median"
                     else:
-                        if x["z__df_unique"] < xthreshhold:
+                        if x["z__df_unique"] <= xthreshhold:
                             return x["z__df_mode"] if xtype == "impute" else "mode"
                         elif xmethod == 1:
                             return x["z__df_mean"] if xtype == "impute" else "mean"
                         elif xmethod == 2:
                             return x["z__df_median"] if xtype == "impute" else "median"
 
-                # if gbdf["z__unique"].min() < self.__mode_fallback_distinct_values:
-                #     gbdf["z__mode"] = tdf.groupby(gbcolumns)[col].aggregate(lambda x: scipy.stats.mode(x)[0][0])
-                # else:
-                #     gbdf["z__mode"] = numpy.NaN
-
                 gbdf["z__impute"] = gbdf.apply(lambda z: calcn12(z, self.__method, self.__mode_fallback_distinct_values, "impute"), axis=1).astype('float64')
                 gbdf["z__impute_type"] = gbdf.apply(lambda z: calcn12(z, self.__method, self.__mode_fallback_distinct_values, "impute_type"), axis=1).astype('str')
+                rules_df.append([column_count, col, self.__method, gbdf.copy(deep=True)])
+
+            #-----------------------------------------------------------------------
+            # Method in [1, 2] for Nonminal Columns
+            #-----------------------------------------------------------------------
+            elif self.__method in [1, 2] and col_type == "Nominal":
+                def calcn(x: pandas.DataFrame, xtype: str = "impute"):
+                    if x["z__unique"] == 1 and x["z__mode"] != "[nan]":
+                        return "[nan]" if xtype == "impute" else "new category"
+                    elif x["z__unique"] == 1 and x["z__mode"] != "[na]":
+                        return "[na]" if xtype == "impute" else "new category"
+                    elif x["z__nobs"] > 0 and x["z__unique"] > 0:
+                        return x["z__mode"] if xtype == "impute" else "mode"
+                    else:
+                        return x["z__df_mode"] if xtype == "impute" else "mode"
+
+                gbdf["z__impute"] = gbdf.apply(lambda z: calcn(z, "impute"), axis=1).astype('str')
+                gbdf["z__impute_type"] = gbdf.apply(lambda z: calcn(z, "impute__type"), axis=1).astype('str')
                 rules_df.append([column_count, col, self.__method, gbdf.copy(deep=True)])
 
             #-----------------------------------------------------------------------
@@ -1102,24 +1110,6 @@ class Imputer:
 
                 gbdf["z__impute"] = gbdf.apply(lambda z: calc3(z, col_type, "impute"), axis=1)
                 gbdf["z__impute_type"] = gbdf.apply(lambda z: calc3(z, col_type, "impute_type"), axis=1)
-                rules_df.append([column_count, col, self.__method, gbdf.copy(deep=True)])
-
-            #-----------------------------------------------------------------------
-            # Method in [1, 2, 4, 5, 6] for Nonminal Columns
-            #-----------------------------------------------------------------------
-            elif self.__method in [1, 2, 4, 5, 6] and col_type == "Nominal":
-                def calcn(x: pandas.DataFrame, xtype: str = "impute"):
-                    if x["z__unique"] == 1 and x["z__mode"] != "[nan]":
-                        return "[nan]" if xtype == "impute" else "new category"
-                    elif x["z__unique"] == 1 and x["z__mode"] != "[na]":
-                        return "[na]" if xtype == "impute" else "new category"
-                    elif x["z__nobs"] > 0 and x["z__unique"] > 0:
-                        return x["z__mode"] if xtype == "impute" else "mode"
-                    else:
-                        return x["z__df_mode"] if xtype == "impute" else "mode"
-
-                gbdf["z__impute"] = gbdf.apply(lambda z: calcn(z, "impute"), axis=1).astype('str')
-                gbdf["z__impute_type"] = gbdf.apply(lambda z: calcn(z, "impute__type"), axis=1).astype('str')
                 rules_df.append([column_count, col, self.__method, gbdf.copy(deep=True)])
 
             #-----------------------------------------------------------------------
@@ -1174,7 +1164,6 @@ class Imputer:
                 bin_gbdf["z__bin_col_median"] = tdf.query(col + " == " + col).groupby(gbcolumns + ["z__bins"], as_index=False)[col].median()[col]
                 bin_gbdf.reset_index(inplace=True)
                 gbdf.reset_index(inplace=True)
-
                 bin_gbdf = pandas.merge(gbdf, bin_gbdf, on=gbcolumns, how='outer')  # type: pandas.DataFrame
                 bin_gbdf.eval("z__diff = abs(z__bin_avgresp - z__missing_avgresp)", inplace=True)
 
@@ -1187,10 +1176,17 @@ class Imputer:
                 bin_gbdf["z__adj_diff"] = bin_gbdf.apply(lambda z: adj_diff(z), axis=1)
                 bin_gbdf["z__adj_diff"] = bin_gbdf.apply(lambda z: numpy.NaN if z["z__bins"] == 99999.0 else z["z__adj_diff"], axis=1)
                 bin_gbdf["z__adj_diff"].fillna(value=999999999999.0, inplace=True)
-                bin_gbdf["z__adj_diff_rank"] = bin_gbdf.groupby(gbcolumns)["z__adj_diff"].rank(method='dense')
 
-                bin_gbdf.query("z__adj_diff_rank == 1", inplace=True)
+                # bin_gbdf["z__adj_diff_rank"] = bin_gbdf.groupby(gbcolumns)["z__adj_diff", "z_bins"].rank(method='dense')
+
+                bin_gbdf.sort_values(by=gbcolumns + ["z__adj_diff", "z__bins"], inplace=True, axis=0)
+
+                # bin_gbdf.query("z__adj_diff_rank == 1", inplace=True)
+                bin_gbdf = bin_gbdf.groupby(gbcolumns, as_index=False).first()
                 bin_gbdf.set_index(gbcolumns, drop=True, append=False, inplace=True)
+
+                # _html = bin_gbdf.to_html(justify="right", notebook=True)
+                # display(HTML(_html))
 
                 def calcn45(x: pandas.DataFrame, xmethod: int, xthreshhold: int, xtype: str = "impute"):
                     if x["z__unique"] == 1 and x["z__mode"] != 0:
@@ -1200,14 +1196,14 @@ class Imputer:
                     elif x["z__adj_diff"] < 999999999999.0:
                         return x["z__bin_col_mean"] if xtype == "impute" else "mean response"
                     elif x["z__nobs"] > 0 and x["z__unique"] > 0:
-                        if x["z__unique"] < xthreshhold:
+                        if x["z__unique"] <= xthreshhold:
                             return x["z__mode"] if xtype == "impute" else "mode"
                         elif xmethod == 4:
                             return x["z__mean"] if xtype == "impute" else "mean"
                         elif xmethod == 5:
                             return x["z__median"] if xtype == "impute" else "median"
                     else:
-                        if x["z__df_unique"] < xthreshhold:
+                        if x["z__df_unique"] <= xthreshhold:
                             return x["z__df_mode"] if xtype == "impute" else "mode"
                         elif xmethod == 4:
                             return x["z__df_mean"] if xtype == "impute" else "mean"
@@ -1220,21 +1216,85 @@ class Imputer:
                 rules_df.append([column_count, col, self.__method, bin_gbdf.copy(deep=True)])
 
             #-----------------------------------------------------------------------
-            # Method = 6 for Numeric Columns (GBM Model with XGBOOST)
+            # Method in [4, 5] for Nominal Columns
             #-----------------------------------------------------------------------
-            elif self.__method == 6:
-                train_x_cols = list()
-                test_x_cols = list()
+            elif self.__method in [4, 5] and col_type == "Nominal":
+                tdf.eval('z__miss_x_resp = z__isnull * ' + label_column, inplace=True)
 
-                # To Be Completed, after developing
-                #
-                # 1. one-hot encoding method that produces
-                #    logic that can be applied later, versus the current SciKit method which
-                #    appears to directly apply the encoding without any saved logic.
-                #
-                # 2. mechanism to save and apply a specific order of columns to a dataframe so that
-                #    wrapper methods can be developed for routines that are sensitive to the order
-                #    of columns such as everthing in SciKit and XGBoost.
+                gbdf["z__missing_sumresp"] = tdf.groupby(gbcolumns)['z__miss_x_resp'].sum().astype('float64')
+                gbdf["z__missing_avgresp"] = gbdf.apply(lambda x: x['z__missing_sumresp'] / x['z__nmiss'] if x['z__nmiss'] > 0 else numpy.NaN, axis=1).astype('float64')
+
+                # _html = gbdf.to_html(justify="right", notebook=True, max_rows=20)
+                # display(HTML(_html))
+
+                q_cols_a = gbcolumns[0]
+                q_join_criteria = "a.%s = b.%s" % (gbcolumns[0], gbcolumns[0])
+                if len(gbcolumns) > 1:
+                    for i in range(1, len(gbcolumns)):
+                        q_cols_a += ", " + gbcolumns[i]
+                        q_join_criteria += " and a.%s = b.%s" % (gbcolumns[i], gbcolumns[i])
+                q_cols_b = q_cols_a
+                q_cols_a += ", " + col
+
+                if 0 <= self.__mean_label_min_obs <= 1:
+                    q_min_label_min_obs = "cast(max(" + str(self.__mean_label_min_obs) + "*b.z__nobs,2) as integer)"
+                else:
+                    q_min_label_min_obs = "cast(max(" + str(self.__mean_label_min_obs) + ",2) as integer)"
+
+                q = f'''
+                    select a.*, 
+                           {q_min_label_min_obs} as z__min_label_min_obs
+                    from (select {q_cols_a}
+                                 ,avg({label_column}) as z__bin_avgresp
+                                 ,count(*) as z__bin_nobs
+                          from tdf
+                          where {col} is not NULL 
+                          group by {q_cols_a}
+                          ) a 
+                    join (select {q_cols_b}, z__nobs
+                          from gbdf                                              
+                          ) b
+                       on {q_join_criteria}
+                    order by {q_cols_a}
+                    '''
+                # print(q)
+                bin_gbdf = pandasql.sqldf(q)
+
+                bin_gbdf.reset_index(inplace=True)
+                gbdf.reset_index(inplace=True)
+
+                bin_gbdf = pandas.merge(gbdf, bin_gbdf, on=gbcolumns, how='outer')  # type: pandas.DataFrame
+                bin_gbdf.eval("z__diff = abs(z__bin_avgresp - z__missing_avgresp)", inplace=True)
+
+                def adj_diff(x):
+                    if x["z__bin_nobs"] >= x["z__min_label_min_obs"] and x["z__nmiss"] >= x["z__min_label_min_obs"]:
+                        return x["z__diff"]
+                    else:
+                        return numpy.NaN
+
+                bin_gbdf["z__adj_diff"] = bin_gbdf.apply(lambda z: adj_diff(z), axis=1)
+                # bin_gbdf["z__adj_diff"] = bin_gbdf.apply(lambda z: numpy.NaN if z["z__bins"] == 99999.0 else z["z__adj_diff"], axis=1)
+                bin_gbdf["z__adj_diff"].fillna(value=999999999999.0, inplace=True)
+
+                bin_gbdf.sort_values(by=gbcolumns + ["z__adj_diff", col], inplace=True, axis=0)
+                bin_gbdf = bin_gbdf.groupby(gbcolumns, as_index=False).first()
+
+                bin_gbdf.set_index(gbcolumns, drop=True, append=False, inplace=True)
+
+                def calcn45(x: pandas.DataFrame, xtype: str = "impute"):
+                    if x["z__unique"] == 1 and x["z__mode"] != "[nan]":
+                        return "[nan]" if xtype == "impute" else "new category"
+                    elif x["z__unique"] == 1 and x["z__mode"] != "[na]":
+                        return "[na]" if xtype == "impute" else "new category"
+                    elif x["z__adj_diff"] < 999999999999.0:
+                        return x[col] if xtype == "impute" else "mean response"
+                    else:
+                        return x["z__mode"] if xtype == "impute" else "mode"
+
+                bin_gbdf["z__impute"] = bin_gbdf.apply(lambda z: calcn45(z, "impute"), axis=1)
+                bin_gbdf["z__impute_type"] = bin_gbdf.apply(lambda z: calcn45(z, "impute_type"), axis=1)
+
+                rules_df.append([column_count, col, self.__method, bin_gbdf.copy(deep=True)])
 
             #-----------------------------------------------------------------------
             # [End of Loop] - for col in [x for x in self.__columns if x not in gbcolumns]:

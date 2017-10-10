@@ -40,6 +40,8 @@ def df_from_pickle(input_dir, file_prefix):
 
 def get_size(obj, unit='MB', suppress_output=False):
     """
+    :param suppress_output:
+    :type suppress_output: bool
     :param obj:
     :type obj: object
     :param unit:
@@ -97,7 +99,7 @@ def df_contents(input_df: pandas.DataFrame,
                 excel_filename: str = None,
                 excel_sheet_name: str = None
                 ):
-    """        
+    """
     :type input_df: pandas.DataFrame
     :type display_html_output: bool
     :type excel_filename: str
@@ -225,3 +227,7 @@ def df_contents(input_df: pandas.DataFrame,
         display(HTML(_html))
 
     return rdf
+
+
+
+
